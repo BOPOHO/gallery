@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Галерея — VideoForge</title>
+<style>
+  :root{
+    --bg:#0e0f13; --bg2:#15171d; --bg3:#1b1e26; --bg4:#22252f;
+    --line:#2a2e3a; --line2:#343845;
+    --txt:#e8e9ee; --txt-dim:#9498a6; --txt-faint:#5d6273;
+    --accent:#7c5cff; --accent2:#52e0c4; --danger:#ff5c7a;
+    --radius:14px; --radius-sm:10px; --tap:50px;
+    --ff:'Segoe UI', Roboto, system-ui, sans-serif;
+  }
+  body.theme-light{
+    --bg:#eef0f4; --bg2:#fff; --bg3:#f4f5f8; --bg4:#e8eaf0;
+    --line:#e3e6ec; --line2:#d2d6e0;
+    --txt:#1a1c24; --txt-dim:#585d6b; --txt-faint:#8c91a0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--ff);overflow-x:hidden;}
+  button{font-family:inherit;cursor:pointer;}
+  svg.ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:10;
+    display:flex;align-items:center;gap:8px;
+    padding:14px 14px 10px;
+    background:linear-gradient(180deg, var(--bg) 60%, transparent);
+  }
+  .topbar .titles{flex:1;}
+  .topbar h1{font-size:21px;margin:0;font-weight:800;letter-spacing:-.3px;}
+  .topbar .sub{font-size:12.5px;color:var(--txt-faint);margin-top:1px;}
+  .tb-btn{
+    display:flex;align-items:center;justify-content:center;
+    background:var(--bg3);border:1px solid var(--line2);color:var(--txt);
+    width:42px;height:42px;border-radius:50%;
+    box-shadow:0 1px 3px rgba(0,0,0,.15);
+  }
+  .tb-btn:active{transform:scale(.92);}
+  .tb-btn.primary{background:linear-gradient(135deg,var(--accent),#5e3fe0);border:none;color:#fff;}
+  .tb-btn:disabled{opacity:.4;}
+
+  /* ---------- PERMISSION SCREEN ---------- */
+  #permScreen{
+    min-height:100dvh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+    padding:32px 24px;gap:18px;
+  }
+  #permScreen .icon{
+    width:104px;height:104px;border-radius:32px;
+    background:linear-gradient(135deg,var(--accent),#5e3fe0);
+    display:flex;align-items:center;justify-content:center;font-size:48px;
+    box-shadow:0 12px 30px -8px rgba(124,92,255,.55);
+  }
+  #permScreen h2{margin:0;font-size:23px;font-weight:800;}
+  #permScreen p{margin:0;color:var(--txt-dim);font-size:15px;line-height:1.6;max-width:340px;}
+  #permScreen .grantbtn{
+    width:100%;max-width:320px;
+    background:linear-gradient(135deg,var(--accent),#5e3fe0);color:#fff;border:none;
+    border-radius:18px;padding:18px;font-size:16.5px;font-weight:700;
+    box-shadow:0 10px 24px -10px rgba(124,92,255,.7);
+  }
+  #permScreen .grantbtn:active{transform:scale(.98);}
+  #permScreen .modetag{
+    font-size:12.5px;color:var(--txt-faint);
+    background:var(--bg3);border:1px solid var(--line);
+    padding:7px 14px;border-radius:14px;
+  }
+
+  /* ---------- GALLERY ---------- */
+  #galleryScreen{display:none;}
+  .group{margin-bottom:4px;}
+  .group-title{
+    font-size:14.5px;font-weight:700;color:var(--txt-dim);
+    padding:10px 16px 8px;
+  }
+  .grid{display:grid;gap:4px;padding:0 8px;}
+  .grid.cols-2{grid-template-columns:repeat(2,1fr);}
+  .grid.cols-3{grid-template-columns:repeat(3,1fr);}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr);}
+  .item{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--bg3);}
+  .item img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .35s, transform .15s;}
+  .item img.loaded{opacity:1;}
+  .item:active{transform:scale(.96);transition:transform .12s;}
+  .item .badge{
+    position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;
+    border-radius:7px;padding:2px 7px;font-size:11px;font-weight:600;
+    display:flex;align-items:center;gap:3px;
+  }
+  .item .playicon{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.4);
+    backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;pointer-events:none;
+  }
+  .item .playicon svg{width:16px;height:16px;}
+
+  /* ---------- SELECTION MODE ---------- */
+  .item .checkmark{
+    position:absolute;top:7px;right:7px;width:24px;height:24px;border-radius:50%;
+    background:rgba(0,0,0,.35);border:2px solid #fff;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s, border-color .15s, transform .15s;
+    z-index:2;
+  }
+  .item.selected .checkmark{
+    background:var(--accent);border-color:var(--accent);transform:scale(1.05);
+  }
+  .item .checkmark svg{width:14px;height:14px;opacity:0;transition:opacity .12s;}
+  .item.selected .checkmark svg{opacity:1;}
+  .item.selected img{transform:scale(.9);border-radius:8px;}
+  .item.selected::after{
+    content:'';position:absolute;inset:0;background:rgba(124,92,255,.18);pointer-events:none;
+  }
+
+  .empty{text-align:center;padding:80px 24px;color:var(--txt-faint);}
+  .empty .icon{font-size:50px;margin-bottom:14px;}
+  .empty p{font-size:15px;line-height:1.5;margin:0;}
+  .status{padding:8px 16px;color:var(--txt-faint);font-size:13px;}
+
+  /* ---------- VIEWER ---------- */
+  .viewer{
+    position:fixed;inset:0;background:#000;z-index:100;
+    display:none;flex-direction:column;
+    opacity:0;transform:scale(.96);transition:opacity .22s,transform .22s;
+  }
+  .viewer.active{display:flex;opacity:1;transform:scale(1);}
+  .viewer-top{
+    position:absolute;top:0;left:0;right:0;z-index:3;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px;padding-top:max(14px, env(safe-area-inset-top));
+    background:linear-gradient(180deg, rgba(0,0,0,.55), transparent);
+  }
+  .viewer-top .counter{color:#fff;font-size:13px;opacity:.85;font-weight:600;}
+  .viewer-actions{display:flex;gap:8px;}
+  .vbtn{
+    width:42px;height:42px;border-radius:50%;
+    background:rgba(255,255,255,.14);border:none;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(6px);
+  }
+  .vbtn:active{transform:scale(.9);}
+  .viewer-stage{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    position:relative;overflow:hidden;touch-action:pan-y;
+  }
+  .viewer-stage img, .viewer-stage video{
+    max-width:100%;max-height:100%;
+    transition:transform .25s ease;
+  }
+  .viewer-bottom{
+    position:absolute;bottom:0;left:0;right:0;z-index:3;
+    padding:16px;padding-bottom:max(16px, env(safe-area-inset-bottom));
+    background:linear-gradient(0deg, rgba(0,0,0,.6), transparent);
+    display:flex;justify-content:center;
+    gap:10px;
+  }
+  .openInEditorBtn{
+    background:linear-gradient(135deg,var(--accent),#5e3fe0);color:#fff;border:none;
+    padding:14px 24px;border-radius:16px;font-weight:700;font-size:15px;
+    display:flex;align-items:center;gap:8px;
+    box-shadow:0 10px 24px -8px rgba(124,92,255,.7);
+  }
+  .openInEditorBtn:active{transform:scale(.97);}
+
+  /* ---------- SETTINGS SHEET (как в VideoForge) ---------- */
+  .sheet-bg{
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+    display:flex;align-items:flex-end;opacity:0;transition:opacity .2s;
+  }
+  .sheet-bg.show{opacity:1;}
+  .sheet{
+    background:var(--bg2);width:100%;max-height:82vh;border-radius:20px 20px 0 0;
+    display:flex;flex-direction:column;transform:translateY(100%);
+    transition:transform .22s ease;box-shadow:0 -10px 40px rgba(0,0,0,.5);
+  }
+  .sheet-bg.show .sheet{transform:translateY(0);}
+  .sheet-handle{width:40px;height:4px;background:var(--line2);border-radius:2px;margin:10px auto 4px;}
+  .sheet-head{display:flex;align-items:center;padding:8px 18px 14px;font-size:17px;font-weight:800;}
+  .sheet-head .sheet-close{margin-left:auto;background:var(--bg3);border:none;color:var(--txt-dim);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  .sheet-body{overflow-y:auto;padding:0 18px 28px;}
+
+  .stitle{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt-faint);margin:16px 0 10px;font-weight:700;}
+  .stitle:first-child{margin-top:0;}
+  .seg{display:flex;background:var(--bg3);border:1px solid var(--line2);border-radius:14px;padding:4px;gap:4px;}
+  .seg button{flex:1;border:none;background:transparent;color:var(--txt-dim);padding:11px 6px;border-radius:11px;font-size:13.5px;font-weight:600;}
+  .seg button.active{background:linear-gradient(135deg,var(--accent),#5e3fe0);color:#fff;}
+  .folder-row{
+    display:flex;align-items:center;gap:10px;
+    background:var(--bg3);border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;margin-bottom:8px;font-size:14px;
+  }
+  .folder-row .fic{color:var(--accent);}
+  .folder-row .fname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .addfolderbtn{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--bg3);border:1.5px dashed var(--line2);color:var(--txt-dim);
+    padding:14px;border-radius:12px;font-size:14px;font-weight:600;margin-top:4px;
+  }
+  .addfolderbtn:active{background:var(--bg4);}
+  .note{
+    font-size:12px;color:var(--txt-faint);line-height:1.55;margin-top:14px;
+    padding:11px 13px;background:var(--bg3);border-radius:var(--radius-sm);border-left:2px solid var(--accent);
+  }
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--bg4);border:1px solid var(--line2);color:var(--txt);
+    padding:12px 20px;border-radius:14px;font-size:13.5px;z-index:300;
+    opacity:0;pointer-events:none;transition:opacity .25s;box-shadow:0 8px 24px rgba(0,0,0,.35);
+    font-weight:600;
+  }
+  .toast.show{opacity:1;}
+  #fileInput{display:none;}
+</style>
+</head>
+<body>
+
+<!-- ======================= ЭКРАН РАЗРЕШЕНИЯ ======================= -->
+<div id="permScreen">
+  <div class="icon">🖼️</div>
+  <h2 id="permTitle">Доступ к галерее</h2>
+  <p id="permText">Чтобы показывать ваши фото и видео прямо здесь, нужно разрешить доступ к галерее устройства.</p>
+  <button class="grantbtn" id="grantBtn">✅ Разрешить доступ к фото</button>
+  <span class="modetag" id="modeTag"></span>
+</div>
+
+<!-- ======================= ЭКРАН ГАЛЕРЕИ ======================= -->
+<div id="galleryScreen">
+  <div class="topbar" id="normalTopbar">
+    <div class="titles">
+      <h1>Галерея</h1>
+      <div class="sub" id="countSub"></div>
+    </div>
+    <button class="tb-btn" id="selectModeBtn">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+    </button>
+    <button class="tb-btn" id="settingsBtn">
+      <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+    <button class="tb-btn primary" id="addMoreBtn">
+      <svg class="ic" viewBox="0 0 24 24" stroke="#fff"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+  </div>
+  <div class="topbar" id="selectionTopbar" style="display:none;">
+    <button class="tb-btn" id="cancelSelectBtn">
+      <svg class="ic" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="titles">
+      <h1 id="selectionCount">Выбрано: 0</h1>
+    </div>
+    <button class="tb-btn" id="selAllBtn" title="Выбрать все">
+      <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M9 12l2 2 4-4"></path></svg>
+    </button>
+    <button class="tb-btn" id="selDeleteBtn">
+      <svg class="ic" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+    </button>
+    <button class="tb-btn primary" id="selShareBtn">
+      <svg class="ic" viewBox="0 0 24 24" stroke="#fff"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+    </button>
+  </div>
+  <input type="file" id="fileInput" accept="image/*,video/*" multiple>
+  <div class="status" id="status"></div>
+  <div id="groupsWrap"></div>
+  <div class="empty" id="emptyState" style="display:none;">
+    <div class="icon">📂</div>
+    <p>Здесь пока пусто.</p>
+  </div>
+  <div style="height:24px"></div>
+</div>
+
+<!-- ======================= ВЬЮВЕР ======================= -->
+<div class="viewer" id="viewer">
+  <div class="viewer-top">
+    <button class="vbtn" id="viewerClose">
+      <svg class="ic" viewBox="0 0 24 24" stroke="#fff"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <span class="counter" id="viewerCounter"></span>
+    <div class="viewer-actions">
+      <button class="vbtn" id="shareBtn">
+        <svg class="ic" viewBox="0 0 24 24" stroke="#fff"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+      </button>
+      <button class="vbtn" id="deleteBtn">
+        <svg class="ic" viewBox="0 0 24 24" stroke="#fff"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+      </button>
+    </div>
+  </div>
+  <div class="viewer-stage" id="viewerStage"></div>
+  <div class="viewer-bottom" id="viewerBottom" style="display:none;">
+    <button class="openInEditorBtn" id="openEditorBtn">🎬 Открыть в VideoForge</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ====================== ТЕМА (синхронизирована с VideoForge) ====================== */
+function applyTheme(t){
+  document.body.classList.toggle('theme-light', t === 'light');
+}
+function getTheme(){ try{ return localStorage.getItem('vf_theme') || 'dark'; }catch(e){ return 'dark'; } }
+function setTheme(t){ applyTheme(t); try{ localStorage.setItem('vf_theme', t); }catch(e){} }
+applyTheme(getTheme());
+
+/* ====================== РАЗМЕР ПЛИТОК ====================== */
+function getCols(){ try{ return parseInt(localStorage.getItem('vf_gallery_cols')||'3',10); }catch(e){ return 3; } }
+function setCols(n){ try{ localStorage.setItem('vf_gallery_cols', String(n)); }catch(e){} renderGallery(); }
+
+/* ====================== TOAST ====================== */
+const toastEl = document.getElementById('toast');
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=>toastEl.classList.remove('show'), 2200);
+}
+
+/* ====================== РЕЖИМ ДОСТУПА ====================== */
+const HAS_FS_ACCESS = 'showDirectoryPicker' in window;
+document.getElementById('modeTag').textContent = HAS_FS_ACCESS
+  ? '📁 Прямой доступ к папке — без копирования файлов'
+  : '📱 iPhone: выберите фото один раз, дальше они останутся здесь';
+
+/* ====================== IndexedDB ====================== */
+const DB_NAME = 'videoforge_gallery_v3';
+let dbPromise = null;
+function openDB(){
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('media')) db.createObjectStore('media', { keyPath:'id' });
+      if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+async function dbPut(store, value, key){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    key !== undefined ? tx.objectStore(store).put(value, key) : tx.objectStore(store).put(value);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function dbGet(store, key){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbGetAllMedia(){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('media', 'readonly');
+    const req = tx.objectStore('media').getAll();
+    req.onsuccess = () => resolve((req.result||[]).sort((a,b)=>b.addedAt-a.addedAt));
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbDeleteMedia(id){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('media', 'readwrite');
+    tx.objectStore('media').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+async function getDirHandles(){ return (await dbGet('settings','dirHandles')) || []; }
+async function saveDirHandles(arr){ await dbPut('settings', arr, 'dirHandles'); }
+
+/* ====================== ПРЕВЬЮ ====================== */
+function makeVideoThumbnail(file){
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.src = url; video.muted = true; video.playsInline = true;
+    video.addEventListener('loadeddata', () => { video.currentTime = Math.min(1, (video.duration||1)/2); });
+    video.addEventListener('seeked', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 360; canvas.height = 360 * (video.videoHeight/video.videoWidth || 1);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => { URL.revokeObjectURL(url); resolve(blob); }, 'image/jpeg', 0.75);
+    });
+    video.addEventListener('error', () => { URL.revokeObjectURL(url); resolve(null); });
+  });
+}
+function getVideoDuration(file){
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video'); v.src = url;
+    v.addEventListener('loadedmetadata', () => { resolve(v.duration); URL.revokeObjectURL(url); });
+    v.addEventListener('error', () => { resolve(null); URL.revokeObjectURL(url); });
+  });
+}
+function formatDuration(sec){
+  if (!sec || isNaN(sec)) return '';
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+/* ====================== СКАН ПАПОК (Android/Desktop) ====================== */
+async function addFolder(){
+  let dirHandle;
+  try { dirHandle = await window.showDirectoryPicker({ id:'vf-gallery', mode:'read' }); }
+  catch(e){ return false; }
+  const dirs = await getDirHandles();
+  const dirId = uid();
+  dirs.push({ id: dirId, handle: dirHandle, name: dirHandle.name });
+  await saveDirHandles(dirs);
+  await scanDirectory({ id: dirId, handle: dirHandle });
+  return true;
+}
+const VIDEO_EXTS = ['mp4','mov','m4v','3gp','3gpp','webm','mkv','avi','wmv','flv','mts','m2ts'];
+const IMAGE_EXTS = ['jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff','tif','avif'];
+// Папки, которые почти никогда не содержат личные фото/видео — пропускаем,
+// чтобы не сканировать тысячи системных/кэш-файлов и не тормозить телефон.
+const SKIP_DIR_NAMES = new Set(['.thumbnails','.trashed','.trash','android','cache','.cache','recycle.bin']);
+
+function detectKind(file, name){
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type.startsWith('image/')) return 'image';
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (VIDEO_EXTS.includes(ext)) return 'video';
+  if (IMAGE_EXTS.includes(ext)) return 'image';
+  return null;
+}
+
+async function scanDirectory(dirRec){
+  document.getElementById('status').textContent = 'Сканирую папку «' + dirRec.handle.name + '»…';
+  const existing = await dbGetAllMedia();
+  const existingKeys = new Set(existing.map(i => i.dirId + '::' + i.name));
+  const counter = { added: 0 };
+  await scanDirRecursive(dirRec.handle, dirRec.id, '', existingKeys, counter, 0);
+  document.getElementById('status').textContent = '';
+  return counter.added;
+}
+
+async function scanDirRecursive(dirHandle, dirId, pathPrefix, existingKeys, counter, depth){
+  if (depth > 8) return; // защита от бесконечной вложенности
+  for await (const [name, handle] of dirHandle.entries()){
+    if (handle.kind === 'directory'){
+      if (SKIP_DIR_NAMES.has(name.toLowerCase())) continue;
+      await scanDirRecursive(handle, dirId, pathPrefix + name + '/', existingKeys, counter, depth + 1);
+      continue;
+    }
+    const relPath = pathPrefix + name;
+    if (existingKeys.has(dirId + '::' + relPath)) continue;
+    let file;
+    try { file = await handle.getFile(); } catch(e) { continue; }
+    const kind = detectKind(file, name);
+    if (!kind) continue; // не фото и не видео — пропускаем
+    const isVideo = kind === 'video';
+    const thumb = isVideo ? await makeVideoThumbnail(file) : null;
+    const duration = isVideo ? await getVideoDuration(file) : null;
+    await dbPut('media', {
+      id: uid(), dirId, name: relPath, type: kind, mime:file.type,
+      fileHandle: handle, thumb, duration,
+      addedAt: file.lastModified || Date.now(), source:'handle'
+    });
+    existingKeys.add(dirId + '::' + relPath);
+    counter.added++;
+  }
+}
+async function scanAllDirectories(){
+  const dirs = await getDirHandles();
+  for (const d of dirs){ try { await scanDirectory(d); } catch(e){} }
+}
+
+/* ====================== РЕЖИМ iPhone: выбор файлов ====================== */
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  document.getElementById('status').textContent = `Сохраняю ${files.length} файл(ов)...`;
+  for (const file of files){
+    const kind = detectKind(file, file.name);
+    if (!kind) continue;
+    const isVideo = kind === 'video';
+    const thumb = isVideo ? await makeVideoThumbnail(file) : null;
+    const duration = isVideo ? await getVideoDuration(file) : null;
+    await dbPut('media', {
+      id: uid(), name:file.name, type:kind, mime:file.type,
+      blob:file, thumb, duration, addedAt: Date.now(), source:'blob'
+    });
+  }
+  document.getElementById('status').textContent = '';
+  e.target.value = '';
+  showToast(`Добавлено: ${files.length}`);
+  showGalleryScreen();
+});
+
+/* ====================== ВХОД ====================== */
+document.getElementById('grantBtn').addEventListener('click', async () => {
+  if (HAS_FS_ACCESS){
+    const dirs = await getDirHandles();
+    if (dirs.length){
+      let anyGranted = false;
+      for (const d of dirs){
+        try { if ((await d.handle.requestPermission({mode:'read'})) === 'granted') anyGranted = true; } catch(e){}
+      }
+      if (anyGranted){ showGalleryScreen(); scanAllDirectories().then(renderGallery); return; }
+    }
+    const ok = await addFolder();
+    if (!ok) return;
+    showGalleryScreen();
+  } else {
+    document.getElementById('fileInput').click();
+  }
+});
+
+async function tryAutoEnter(){
+  if (HAS_FS_ACCESS){
+    const dirs = await getDirHandles();
+    if (dirs.length){
+      let allOk = true;
+      for (const d of dirs){
+        try { if ((await d.handle.queryPermission({mode:'read'})) !== 'granted') allOk = false; } catch(e){ allOk = false; }
+      }
+      if (allOk){
+        showGalleryScreen();
+        scanAllDirectories().then(renderGallery);
+        return;
+      } else {
+        document.getElementById('permTitle').textContent = 'Подтвердите доступ';
+        document.getElementById('permText').textContent = 'Доступ к папке нужно подтвердить ещё раз — нажмите кнопку ниже.';
+      }
+    }
+  } else {
+    const items = await dbGetAllMedia().catch(()=>[]);
+    if (items.length){ showGalleryScreen(); return; }
+  }
+}
+
+function showGalleryScreen(){
+  document.getElementById('permScreen').style.display = 'none';
+  document.getElementById('galleryScreen').style.display = 'block';
+  renderGallery();
+}
+
+document.getElementById('addMoreBtn').addEventListener('click', async () => {
+  if (HAS_FS_ACCESS){ const ok = await addFolder(); if (ok){ showToast('Папка добавлена'); renderGallery(); } }
+  else { document.getElementById('fileInput').click(); }
+});
+
+/* ====================== ГРУППИРОВКА ПО ДАТАМ ====================== */
+const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+function dayLabel(ts){
+  const d = new Date(ts); d.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const yest = new Date(today); yest.setDate(yest.getDate()-1);
+  if (d.getTime() === today.getTime()) return 'Сегодня';
+  if (d.getTime() === yest.getTime()) return 'Вчера';
+  if (d.getFullYear() === today.getFullYear()) return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/* ====================== ВЫБОР (МУЛЬТИ-SELECT) ====================== */
+let selectionMode = false;
+let selectedIds = new Set();
+const normalTopbar = document.getElementById('normalTopbar');
+const selectionTopbar = document.getElementById('selectionTopbar');
+const selectionCountEl = document.getElementById('selectionCount');
+
+function enterSelectionMode(initialId){
+  selectionMode = true;
+  selectedIds = new Set();
+  if (initialId) selectedIds.add(initialId);
+  normalTopbar.style.display = 'none';
+  selectionTopbar.style.display = 'flex';
+  updateSelectionUI();
+  renderGallery();
+}
+function exitSelectionMode(){
+  selectionMode = false;
+  selectedIds = new Set();
+  normalTopbar.style.display = 'flex';
+  selectionTopbar.style.display = 'none';
+  renderGallery();
+}
+function toggleSelected(id){
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  if (selectedIds.size === 0 && selectionMode){
+    // ничего не выбрано — можно остаться в режиме выбора, просто обновляем счётчик
+  }
+  updateSelectionUI();
+}
+function updateSelectionUI(){
+  selectionCountEl.textContent = `Выбрано: ${selectedIds.size}`;
+  document.getElementById('selDeleteBtn').disabled = selectedIds.size === 0;
+  document.getElementById('selShareBtn').disabled = selectedIds.size === 0;
+}
+
+document.getElementById('selectModeBtn').addEventListener('click', () => enterSelectionMode());
+document.getElementById('cancelSelectBtn').addEventListener('click', exitSelectionMode);
+document.getElementById('selAllBtn').addEventListener('click', () => {
+  if (selectedIds.size === currentItems.length){
+    selectedIds = new Set(); // повторное нажатие — снять выбор со всех
+  } else {
+    selectedIds = new Set(currentItems.map(i => i.id));
+  }
+  updateSelectionUI();
+  renderGallery();
+});
+
+/* ====================== ОТРИСОВКА ГАЛЕРЕИ ====================== */
+let currentItems = [];
+const groupsWrap = document.getElementById('groupsWrap');
+const emptyState = document.getElementById('emptyState');
+
+async function renderGallery(){
+  const items = await dbGetAllMedia();
+  currentItems = items;
+  document.getElementById('countSub').textContent = items.length ? `${items.length} фото и видео` : '';
+  groupsWrap.innerHTML = '';
+  if (!items.length){ emptyState.style.display = 'block'; return; }
+  emptyState.style.display = 'none';
+
+  const cols = getCols();
+  const groups = [];
+  let lastLabel = null, lastGroup = null;
+  items.forEach((item, idx) => {
+    const label = dayLabel(item.addedAt);
+    if (label !== lastLabel){ lastGroup = { label, items: [] }; groups.push(lastGroup); lastLabel = label; }
+    lastGroup.items.push({ item, idx });
+  });
+
+  for (const g of groups){
+    const sec = document.createElement('div'); sec.className = 'group';
+    const title = document.createElement('div'); title.className = 'group-title'; title.textContent = g.label;
+    sec.appendChild(title);
+    const grid = document.createElement('div'); grid.className = 'grid cols-' + cols;
+    for (const { item, idx } of g.items){
+      grid.appendChild(renderItemCell(item, idx));
+    }
+    sec.appendChild(grid);
+    groupsWrap.appendChild(sec);
+  }
+}
+
+function renderItemCell(item, idx){
+  const cell = document.createElement('div');
+  cell.className = 'item';
+  if (selectionMode && selectedIds.has(item.id)) cell.classList.add('selected');
+
+  const img = document.createElement('img');
+  img.loading = 'lazy';
+  img.addEventListener('load', () => img.classList.add('loaded'));
+  resolveThumbSrc(item).then(src => { if (src) img.src = src; });
+  cell.appendChild(img);
+
+  if (item.type === 'video'){
+    const play = document.createElement('div'); play.className = 'playicon';
+    play.innerHTML = '<svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>';
+    cell.appendChild(play);
+    if (item.duration){
+      const badge = document.createElement('div'); badge.className = 'badge';
+      badge.textContent = formatDuration(item.duration);
+      cell.appendChild(badge);
+    }
+  }
+
+  if (selectionMode){
+    const check = document.createElement('div'); check.className = 'checkmark';
+    check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    cell.appendChild(check);
+  }
+
+  // долгое нажатие на фото — быстрый вход в режим выбора
+  let pressTimer = null;
+  cell.addEventListener('pointerdown', () => {
+    if (selectionMode) return;
+    pressTimer = setTimeout(() => { enterSelectionMode(item.id); }, 450);
+  });
+  cell.addEventListener('pointerup', () => { clearTimeout(pressTimer); });
+  cell.addEventListener('pointerleave', () => { clearTimeout(pressTimer); });
+
+  cell.addEventListener('click', () => {
+    if (selectionMode){
+      toggleSelected(item.id);
+      cell.classList.toggle('selected', selectedIds.has(item.id));
+      const check = cell.querySelector('.checkmark');
+      if (!check && selectedIds.has(item.id)){
+        // на случай динамического добавления чекмарка
+      }
+    } else {
+      openViewer(idx);
+    }
+  });
+  return cell;
+}
+
+async function resolveThumbSrc(item){
+  if (item.type === 'video') return item.thumb ? URL.createObjectURL(item.thumb) : '';
+  if (item.source === 'handle'){
+    try { const file = await item.fileHandle.getFile(); return URL.createObjectURL(file); }
+    catch(e){ return ''; }
+  }
+  return URL.createObjectURL(item.blob);
+}
+
+async function getRealFile(item){
+  return item.source === 'handle' ? await item.fileHandle.getFile() : item.blob;
+}
+
+/* ====================== УДАЛЕНИЕ ВЫБРАННОГО ====================== */
+document.getElementById('selDeleteBtn').addEventListener('click', async () => {
+  if (!selectedIds.size) return;
+  if (!confirm(`Удалить выбранные файлы (${selectedIds.size})? Это действие нельзя отменить.`)) return;
+  let failed = 0;
+  for (const id of Array.from(selectedIds)){
+    const item = currentItems.find(i => i.id === id);
+    if (!item) continue;
+    try {
+      if (item.source === 'handle'){
+        const dirs = await getDirHandles();
+        const dirRec = dirs.find(d => d.id === item.dirId);
+        if (dirRec){
+          const perm = await dirRec.handle.requestPermission({ mode:'readwrite' });
+          if (perm !== 'granted'){ failed++; continue; }
+        }
+        if (item.fileHandle.remove) { await item.fileHandle.remove(); }
+        else { failed++; continue; }
+      }
+      await dbDeleteMedia(item.id);
+    } catch(e){ failed++; }
+  }
+  showToast(failed ? `Удалено, но ${failed} файл(ов) не удалось удалить` : 'Файлы удалены');
+  exitSelectionMode();
+});
+
+/* ====================== ПОДЕЛИТЬСЯ ВЫБРАННЫМ (несколько фото сразу) ====================== */
+document.getElementById('selShareBtn').addEventListener('click', async () => {
+  if (!selectedIds.size) return;
+  const items = currentItems.filter(i => selectedIds.has(i.id));
+  await shareItems(items);
+});
+
+async function shareItems(items){
+  try {
+    const files = [];
+    for (const item of items){
+      const file = await getRealFile(item);
+      files.push(new File([file], item.name || (uid()+'.'+(item.type==='video'?'mp4':'jpg')), { type: file.type || item.mime }));
+    }
+    if (navigator.share && navigator.canShare && navigator.canShare({ files })){
+      await navigator.share({ files, title: files.length > 1 ? `${files.length} файлов` : (items[0].name || 'Файл') });
+      if (selectionMode) exitSelectionMode();
+      return;
+    }
+    // Фоллбэк: браузер не поддерживает шаринг файлов — скачиваем по очереди
+    for (const file of files){
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a'); a.href = url; a.download = file.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+    showToast(files.length > 1 ? 'Файлы сохранены на устройство' : 'Файл сохранён на устройство');
+    if (selectionMode) exitSelectionMode();
+  } catch(e){
+    // пользователь отменил системное окно «Поделиться» — это нормально, ничего не делаем
+  }
+}
+
+/* ====================== ВЬЮВЕР (свайп между фото/видео) ====================== */
+const viewer = document.getElementById('viewer');
+const viewerStage = document.getElementById('viewerStage');
+const viewerCounter = document.getElementById('viewerCounter');
+const viewerBottom = document.getElementById('viewerBottom');
+let viewerIndex = 0;
+
+async function openViewer(idx){
+  viewerIndex = idx;
+  viewer.classList.add('active');
+  await renderViewerStage();
+}
+function closeViewer(){
+  viewer.classList.remove('active');
+  viewerStage.innerHTML = '';
+}
+document.getElementById('viewerClose').addEventListener('click', closeViewer);
+
+async function renderViewerStage(){
+  const item = currentItems[viewerIndex];
+  if (!item) return;
+  viewerCounter.textContent = `${viewerIndex+1} из ${currentItems.length}`;
+  viewerStage.innerHTML = '';
+  const file = await getRealFile(item);
+  const url = URL.createObjectURL(file);
+
+  if (item.type === 'image'){
+    const img = document.createElement('img'); img.src = url;
+    viewerStage.appendChild(img);
+    viewerBottom.style.display = 'none';
+  } else {
+    const video = document.createElement('video');
+    video.src = url; video.controls = true; video.playsInline = true; video.autoplay = true;
+    viewerStage.appendChild(video);
+    viewerBottom.style.display = 'flex';
+  }
+}
+
+document.getElementById('openEditorBtn').addEventListener('click', () => {
+  const item = currentItems[viewerIndex];
+  if (item) openInVideoForge(item);
+});
+
+/* свайп влево/вправо для переключения фото/видео */
+(function enableSwipe(){
+  let startX = 0, startY = 0, dragging = false, isVertical = false;
+  viewerStage.addEventListener('pointerdown', e => {
+    if (e.target.closest('video')) {
+      const rect = e.target.getBoundingClientRect();
+      if (e.clientY > rect.bottom - 44) return; // не мешаем нативным контролам видео
+    }
+    startX = e.clientX; startY = e.clientY; dragging = true; isVertical = false;
+  });
+  viewerStage.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if (Math.abs(dy) > Math.abs(dx) + 10) { isVertical = true; }
+  });
+  viewerStage.addEventListener('pointerup', e => {
+    if (!dragging) return; dragging = false;
+    if (isVertical) return;
+    const dx = e.clientX - startX;
+    if (dx < -60 && viewerIndex < currentItems.length - 1) { viewerIndex++; renderViewerStage(); }
+    else if (dx > 60 && viewerIndex > 0) { viewerIndex--; renderViewerStage(); }
+  });
+})();
+
+/* ====================== УДАЛЕНИЕ (один файл, из вьювера) ====================== */
+document.getElementById('deleteBtn').addEventListener('click', async () => {
+  const item = currentItems[viewerIndex];
+  if (!item) return;
+  if (!confirm('Удалить этот файл? Это действие нельзя отменить.')) return;
+  try {
+    if (item.source === 'handle'){
+      const dirs = await getDirHandles();
+      const dirRec = dirs.find(d => d.id === item.dirId);
+      if (dirRec){
+        const perm = await dirRec.handle.requestPermission({ mode:'readwrite' });
+        if (perm !== 'granted'){ showToast('Нет разрешения на удаление'); return; }
+      }
+      if (item.fileHandle.remove) { await item.fileHandle.remove(); }
+      else { showToast('Удаление не поддерживается в этом браузере'); return; }
+    }
+    await dbDeleteMedia(item.id);
+    showToast('Удалено');
+    closeViewer();
+    renderGallery();
+  } catch(e){ showToast('Не удалось удалить файл'); }
+});
+
+/* ====================== ПОДЕЛИТЬСЯ (один файл, из вьювера) ====================== */
+document.getElementById('shareBtn').addEventListener('click', async () => {
+  const item = currentItems[viewerIndex];
+  if (!item) return;
+  await shareItems([item]);
+});
+
+/* ====================== ОТКРЫТЬ В VIDEOFORGE ====================== */
+function openInVideoForge(item){
+  localStorage.setItem('vf_open_request', item.id);
+  window.location.href = 'editor.html';
+}
+
+/* ====================== НАСТРОЙКИ (sheet) ====================== */
+function openSettingsSheet(){
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  bg.innerHTML = `<div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">Настройки <button class="sheet-close">✕</button></div>
+    <div class="sheet-body" id="settingsBody"></div>
+  </div>`;
+  document.body.appendChild(bg);
+  const openedAt = Date.now();
+  bg.onclick = e => { if (e.target === bg && Date.now()-openedAt > 250) closeSettings(); };
+  bg.querySelector('.sheet-close').onclick = closeSettings;
+  function closeSettings(){ bg.classList.remove('show'); setTimeout(()=>bg.remove(), 200); }
+  requestAnimationFrame(() => bg.classList.add('show'));
+  buildSettingsBody(bg.querySelector('#settingsBody'));
+}
+async function buildSettingsBody(body){
+  body.innerHTML = '';
+
+  const t1 = document.createElement('div'); t1.className = 'stitle'; t1.textContent = 'Размер плиток';
+  body.appendChild(t1);
+  const seg = document.createElement('div'); seg.className = 'seg';
+  [[2,'Крупные'],[3,'Средние'],[4,'Мелкие']].forEach(([n,label]) => {
+    const b = document.createElement('button'); b.textContent = label;
+    if (getCols() === n) b.classList.add('active');
+    b.onclick = () => { setCols(n); seg.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+    seg.appendChild(b);
+  });
+  body.appendChild(seg);
+
+  const t2 = document.createElement('div'); t2.className = 'stitle'; t2.textContent = 'Тема';
+  body.appendChild(t2);
+  const seg2 = document.createElement('div'); seg2.className = 'seg';
+  [['dark','🌙 Тёмная'],['light','☀️ Светлая']].forEach(([val,label]) => {
+    const b = document.createElement('button'); b.textContent = label;
+    if (getTheme() === val) b.classList.add('active');
+    b.onclick = () => { setTheme(val); seg2.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+    seg2.appendChild(b);
+  });
+  body.appendChild(seg2);
+
+  if (HAS_FS_ACCESS){
+    const t3 = document.createElement('div'); t3.className = 'stitle'; t3.textContent = 'Папки с фото';
+    body.appendChild(t3);
+    const dirs = await getDirHandles();
+    dirs.forEach(d => {
+      const row = document.createElement('div'); row.className = 'folder-row';
+      row.innerHTML = `<span class="fic">📁</span><span class="fname">${d.name}</span>`;
+      body.appendChild(row);
+    });
+    const addBtn = document.createElement('button'); addBtn.className = 'addfolderbtn';
+    addBtn.innerHTML = '➕ Добавить ещё папку';
+    addBtn.onclick = async () => { const ok = await addFolder(); if (ok){ showToast('Папка добавлена'); renderGallery(); buildSettingsBody(body); } };
+    body.appendChild(addBtn);
+    const note = document.createElement('div'); note.className = 'note';
+    note.textContent = 'Файлы из этих папок не копируются — они остаются на устройстве, галерея только их показывает.';
+    body.appendChild(note);
+  } else {
+    const note = document.createElement('div'); note.className = 'note';
+    note.textContent = 'На iPhone нельзя дать постоянный доступ к папке (ограничение Apple) — выбранные фото и видео сохраняются прямо здесь.';
+    body.appendChild(note);
+  }
+}
+document.getElementById('settingsBtn').addEventListener('click', openSettingsSheet);
+
+/* ====================== СТАРТ ====================== */
+tryAutoEnter();
+</script>
+
+</body>
+</html>
